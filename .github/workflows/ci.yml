@@ -1,0 +1,38 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Docker Compose
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y docker-compose
+    
+    - name: Build the Docker images
+      run: docker-compose build
+    
+    - name: Start the services
+      run: docker-compose up -d
+    
+    - name: Wait for services to be ready
+      run: sleep 10
+    
+    - name: Check if services are running
+      run: docker-compose ps
+    
+    - name: Test backend API
+      run: |
+        curl -s -o /dev/null -w "%{http_code}" http://localhost:5000 | grep -q "200"
+    
+    - name: Tear down the services
+      run: docker-compose down
