@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # Database
+  mongo:
+    image: mongo:4.4
+    container_name: mongo
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - banking-network
+
+  # Banking Backend (Python/Flask)
+  backend:
+    build:
+      context: ./backend
+    container_name: banking-backend
+    restart: always
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/bank_app
+      - SECRET_KEY=your_secret_key_here
+    depends_on:
+      - mongo
+    networks:
+      - banking-network
+
+  # Transactions Service (JavaScript)
+  transactions:
+    build:
+      context: ./transactions
+    container_name: transactions-service
+    restart: always
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/bank_app
+    depends_on:
+      - mongo
+      - backend
+    networks:
+      - banking-network
+
+  # Frontend UI
+  frontend:
+    build:
+      context: ./studentportfolio
+    container_name: student-frontend
+    restart: always
+    volumes:
+      - ./studentportfolio:/usr/share/nginx/html
+    depends_on:
+      - backend
+      - transactions
+    networks:
+      - banking-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./studentportfolio:/usr/share/nginx/html
+    depends_on:
+      - frontend
+      - backend
+      - transactions
+    networks:
+      - banking-network
+
+# Define volumes
+volumes:
+  mongo_data:
+
+# Define networks
+networks:
+  banking-network:
+    driver: bridge
